@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="src/main/resources/logo.png" width="250" alt="CheckYourMods Logo">
+</p>
+
 # CheckYourMods 🛡️
 
 **CheckYourMods** is an advanced security and transparency tool for **Minecraft 1.21.1 (NeoForge)** designed for server administrators. It ensures a fair play environment by monitoring client-side modifications and resource packs.
