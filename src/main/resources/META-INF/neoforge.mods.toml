@@ -1,6 +1,7 @@
 modLoader="javafml"
 loaderVersion="[2,)"
 license="MIT"
+logoFile="logo.png"
 
 [[mods]]
 modId="checkyourmods"
