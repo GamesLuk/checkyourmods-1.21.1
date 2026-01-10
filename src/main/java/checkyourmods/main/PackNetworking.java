@@ -24,8 +24,8 @@ public class PackNetworking {
 
             if (isSuspicious || watchedHashes.contains(pack.hash())) {
                 player.getServer().getPlayerList().broadcastSystemMessage(
-                        Component.literal("§6[CheckYourMods] §c¡ALERTA! §e" + playerName + " §fusa pack sospechoso: §b" + pack.fileName()), false);
-                ModLogger.log("ALERTA PACK: " + playerName + " | Archivo: " + pack.fileName() + " | Hash: " + pack.hash());
+                        Component.literal("§6[CheckYourMods] §cALERT! §e" + playerName + " §fis using a suspicious pack: §b" + pack.fileName()), false);
+                ModLogger.log("PACK ALERT: " + playerName + " | File: " + pack.fileName() + " | Hash: " + pack.hash());
             }
         }
     }

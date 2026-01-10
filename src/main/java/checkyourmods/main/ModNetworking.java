@@ -41,8 +41,8 @@ public class ModNetworking {
         });
 
         if (!extra.isEmpty()) {
-            server.getPlayerList().broadcastSystemMessage(Component.literal("§6[CheckYourMods] §f" + player.getName().getString() + " tiene mods extra: " + String.join("§f, ", extra)), false);
-            ModLogger.log("MODS EXTRA: " + player.getName().getString() + " -> " + extra);
+            server.getPlayerList().broadcastSystemMessage(Component.literal("§6[CheckYourMods] §f" + player.getName().getString() + " has extra mods: " + String.join("§f, ", extra)), false);
+            ModLogger.log("EXTRA MODS: " + player.getName().getString() + " -> " + extra);
         }
     }
 }
