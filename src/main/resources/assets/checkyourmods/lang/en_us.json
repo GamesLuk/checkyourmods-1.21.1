@@ -1,0 +1,13 @@
+{
+  "itemGroup.checkyourmods": "Example Mod Tab",
+  "block.checkyourmods.example_block": "Example Block",
+  "item.checkyourmods.example_item": "Example Item",
+
+  "checkyourmods.configuration.title": "CheckYourMods Configs",
+  "checkyourmods.configuration.section.checkyourmods.common.toml": "CheckYourMods Configs",
+  "checkyourmods.configuration.section.checkyourmods.common.toml.title": "CheckYourMods Configs",
+  "checkyourmods.configuration.items": "Item List",
+  "checkyourmods.configuration.logDirtBlock": "Log Dirt Block",
+  "checkyourmods.configuration.magicNumberIntroduction": "Magic Number Text",
+  "checkyourmods.configuration.magicNumber": "Magic Number"
+}

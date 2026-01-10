@@ -1,0 +1,27 @@
+modLoader="javafml"
+loaderVersion="[2,)"
+license="MIT"
+
+[[mods]]
+modId="checkyourmods"
+version="1.0.0"
+displayName="CheckYourMods"
+modConstructor="checkyourmods.main"
+authors="Alber11"
+description='''
+Security tool to verify client mods and detect suspicious and cheating resource packs.
+'''
+
+[[dependencies.checkyourmods]]
+modId="neoforge"
+type="required"
+versionRange="[21.1,)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.checkyourmods]]
+modId="minecraft"
+type="required"
+versionRange="[1.21.1,1.22)"
+ordering="NONE"
+side="BOTH"
