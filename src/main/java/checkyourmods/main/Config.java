@@ -26,7 +26,7 @@ public class Config {
         ALLOWED_MOD_IDS = BUILDER
                 .comment("WHITELIST: Add Mod IDs for client-side mods that are NOT on the server but are allowed.",
                         "Common examples: ['optifine', 'iris', 'sodium', 'voicechat']")
-                .defineList("allowed_mod_ids", List.of("optifine", "oculus"), o -> o instanceof String);
+                .defineListAllowEmpty("allowed_mod_ids", List.of("optifine", "oculus"), o -> o instanceof String);
 
         BUILDER.pop();
 
@@ -40,7 +40,7 @@ public class Config {
 
         MANUAL_XRAY_HASHES = BUILDER
                 .comment("MANUAL TRACKING: Add specific SHA-256 hashes for packs that should always trigger an alert.")
-                .defineList("manual_xray_hashes", List.of("insert_hash_here"), o -> o instanceof String);
+                .defineListAllowEmpty("manual_xray_hashes", List.of("insert_hash_here"), o -> o instanceof String);
 
         BUILDER.pop();
     }
