@@ -35,8 +35,9 @@ public class ModNetworking {
         List<String> extra = new ArrayList<>();
 
         clientMods.forEach((file, data) -> {
-            if (!serverIds.contains(data.modId()) && !allowedIds.contains(data.modId())) {
-                extra.add("§e" + file + " §7(ID: " + data.modId() + ")");
+            String cleanId = data.modId().split("#")[0].trim();
+            if (!serverIds.contains(cleanId) && !allowedIds.contains(cleanId)) {
+                extra.add("§e" + file + " §7(ID: " + cleanId + ")");
             }
         });
 
