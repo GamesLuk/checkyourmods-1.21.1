@@ -4,31 +4,95 @@
 
 # CheckYourMods 🛡️
 
-**CheckYourMods** is an advanced security and transparency tool for **Minecraft 1.21.1 (NeoForge)** designed for server administrators. It ensures a fair play environment by monitoring client-side modifications and resource packs.
+**CheckYourMods** is an advanced security and transparency tool for **Minecraft 1.21.1 (NeoForge)** designed for server administrators. It ensures a fair play environment by monitoring client-side modifications and resource packs, providing robust banning and auditing systems.
 
-## ✨ Key Features
+### 📋 Overview
 
-* **Smart Mod Verification**: Automatically compares player mods against the server's mod list and ignores matches.
-* **Intelligent Resource Pack Scan**: Detects suspicious keywords like "xray", "vision", or "transparent" within the pack's internal metadata (`pack.mcmeta`).
-* **SHA-256 Fingerprinting**: Allows manual tracking of specific resource packs using their unique digital hash.
-* **Transparency for Players**: Includes public commands so players can verify what is being monitored, ensuring the staff is not hiding anything.
-* **Persistent Logging**: All connection data, detected mods, and suspicious packs are recorded in `logs/checkyourmods-log.txt`.
+CheckYourMods provides server administrators with the tools to enforce mod and resource pack policies. It automatically detects unauthorized modifications, tracks player mod usage, and maintains detailed logs and audit trails.
 
-## 🛠️ Configuration
+### ✨ Key Features
 
-The mod generates a configuration file in `serverconfig/checkyourmods-server.toml` with intuitive instructions:
+*   **Smart Mod Verification**: Automatically compares player mods against the server's mod list.
+*   **Banning & Warning System**: Automatically bans players using forbidden mods and warns players about suspicious ones.
+*   **Intelligent Resource Pack Scan**: Detects suspicious keywords like "xray" or "transparent" in resource pack metadata.
+*   **SHA-256 Fingerprinting**: Tracks specific resource packs using unique digital hashes.
+*   **Mod Statistics**: Tracks mod usage across the server and provides a "Top 10" most used mods list.
+*   **Persistent Auditing**: Maintains detailed audit logs for all security-relevant actions.
+*   **Automatic Maintenance**: Periodically cleans up old logs (>30 days) and saves checkpoints.
 
-1.  **`allowed_mod_ids`**: Add IDs for client-side utility mods (e.g., `optifine`, `sodium`, `voicechat`) so they are not announced as extra mods.
-2.  **`manual_xray_hashes`**: Add specific SHA-256 hashes for malicious packs that might bypass the keyword scanner.
+### 🛠️ Tech Stack
 
-## 💻 Commands
+*   **Language**: Java 21
+*   **Framework**: NeoForge (Minecraft 1.21.1)
+*   **Build System**: Gradle 8.x with `ModDevGradle`
+*   **Metadata**: NeoForge `neoforge.mods.toml`
 
-* `/modcheck list`: Shows the list of allowed mod IDs to all players.
-* `/modcheck packs`: Shows the list of manually watched resource pack hashes.
+### ⚙️ Requirements
 
-## 📄 License
+*   **Server**: Minecraft 1.21.1 with NeoForge installed.
+*   **Java**: Java 21 or higher.
+*   **Development**: Gradle (bundled via `gradlew`).
 
-Distributed under the **MIT License**. This allows for high transparency and community collaboration. See the `LICENSE` file for more information.
+### 🚀 Setup & Run
+
+1.  **Clone the repository**:
+    ```bash
+    git clone <repository-url>
+    cd checkyourmods-1.21.1
+    ```
+2.  **Build the project**:
+    ```bash
+    ./gradlew build
+    ```
+    The built jar will be in `build/libs/`.
+3.  **Run for development**:
+    *   **Client**: `./gradlew runClient`
+    *   **Server**: `./gradlew runServer`
+4.  **Deployment**: Place the generated jar file into your server's `mods` folder.
+
+### 💻 Commands
+
+CheckYourMods uses the `/modcheck` base command:
+
+| Command | Permission | Description |
+| :--- | :--- | :--- |
+| `/modcheck requiredlist` | All | Shows required mod IDs. |
+| `/modcheck bannedlist` | All | Shows banned mod IDs. |
+| `/modcheck packslist` | All | Shows watched resource pack hashes. |
+| `/modcheck allow <modid>` | All | Player marks a mod as optionally allowed for themselves. |
+| `/modcheck dashboard` | Ops (2+) | Displays security overview and stats. |
+| `/modcheck stats` | Ops (2+) | Shows top 10 most used mods and violations. |
+| `/modcheck bans` | Ops (2+) | Lists all currently banned players. |
+| `/modcheck unban <player>` | Ops (2+) | Unbans a specified player. |
+| `/modcheck audit` | Super Ops (3+) | Displays the last 20 audit log entries. |
+| `/modcheck togglepacks` | Ops (2+) | Toggles strict pack verification. |
+| `/modcheck allowpack <hash>`| Ops (2+) | Manually allows a specific pack hash. |
+
+### 🔧 Configuration
+
+The configuration file is located at `serverconfig/checkyourmods-server.toml`.
+
+*   **`required_mod_ids`**: List of mod IDs players *must* have to join.
+*   **`banned_mod_ids`**: List of mod IDs that trigger an automatic permanent ban.
+*   **`manual_xray_hashes`**: SHA-256 hashes of forbidden resource packs.
+*   **`enable_ban_notifications`**: (Default: `true`) Notify admins when a ban occurs.
+*   **`enable_mod_warnings`**: (Default: `true`) Warn players about unknown mods.
+*   **`enable_stats`**: (Default: `true`) Enable mod usage statistics collection.
+
+### 📂 Project Structure
+
+*   `src/main/java/checkyourmods/main/`: Core logic including networking, commands, and managers.
+*   `src/main/resources/`: Assets, translations, and `META-INF/neoforge.mods.toml`.
+*   `logs/`: Contains `checkyourmods-log.txt`, `checkyourmods-bans.log`, etc.
+*   `data/`: Persistent storage for bans (`checkyourmods_bans.txt`), stats, and audit logs.
+
+### 🧪 Tests
+*   **TODO**: Implement unit tests for networking and mod comparison logic.
+*   NeoForge `gameTestServer` configuration is available via `./gradlew runGameTestServer`.
+
+### 📄 License
+
+Distributed under the **MIT License**. See `LICENSE.md` for more information.
 
 ---
 *Created for the Minecraft Server Administration community.*

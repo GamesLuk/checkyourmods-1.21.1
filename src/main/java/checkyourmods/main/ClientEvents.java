@@ -10,9 +10,14 @@ import net.neoforged.neoforge.network.PacketDistributor;
 public class ClientEvents {
     @SubscribeEvent
     public static void onJoin(ClientPlayerNetworkEvent.LoggingIn event) {
+        String version = net.neoforged.fml.ModList.get().getModContainerById("checkyourmods")
+                .map(container -> container.getModInfo().getVersion().toString())
+                .orElse("unknown");
+
         PacketDistributor.sendToServer(new ModListPayload(
                 ModCheckUtil.generateCurrentModList(),
-                PackCheckUtil.generateCurrentPackList()
+                PackCheckUtil.generateCurrentPackList(),
+                version
         ));
     }
 }
