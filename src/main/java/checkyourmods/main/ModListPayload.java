@@ -7,7 +7,7 @@ import net.minecraft.resources.ResourceLocation;
 import io.netty.buffer.ByteBuf;
 import java.util.*;
 
-public record ModListPayload(Map<String, ModData> mods, List<ResourcePackData> packs) implements CustomPacketPayload {
+public record ModListPayload(Map<String, ModData> mods, List<ResourcePackData> packs, String cymVersion) implements CustomPacketPayload {
     public static final Type<ModListPayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath("checkyourmods", "verify"));
 
     public record ModData(String modId, String hash) {}
@@ -19,6 +19,7 @@ public record ModListPayload(Map<String, ModData> mods, List<ResourcePackData> p
     public static final StreamCodec<ByteBuf, ModListPayload> STREAM_CODEC = StreamCodec.composite(
             ByteBufCodecs.map(HashMap::new, ByteBufCodecs.STRING_UTF8, MOD_DATA_CODEC), ModListPayload::mods,
             ByteBufCodecs.collection(ArrayList::new, ResourcePackData.STREAM_CODEC), ModListPayload::packs,
+            ByteBufCodecs.STRING_UTF8, ModListPayload::cymVersion,
             ModListPayload::new
     );
 

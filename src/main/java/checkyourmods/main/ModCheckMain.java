@@ -19,6 +19,12 @@ public class ModCheckMain {
 
     private void onServerAboutToStart(ServerAboutToStartEvent event) {
         SERVER_MODS_CACHE = ModCheckUtil.generateCurrentModList();
-        System.out.println("[CheckYourMods] Servidor listo. Mods registrados: " + SERVER_MODS_CACHE.size());
+        System.out.println("[CheckYourMods] Server starting. Registered mods: " + SERVER_MODS_CACHE.size());
+        System.out.println("[CheckYourMods] Required mods: " + Config.REQUIRED_MOD_IDS.get().size());
+        System.out.println("[CheckYourMods] Banned mods: " + Config.BANNED_MOD_IDS.get().size());
+        
+        // Initialize managers
+        PlayerBanManager.getAllBans(); // Load bans
+        ModLogger.log("SERVER START: CheckYourMods initialized with " + SERVER_MODS_CACHE.size() + " server mods");
     }
 }
