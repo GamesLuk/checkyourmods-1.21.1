@@ -1,5 +1,6 @@
 package checkyourmods.main;
 
+import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -8,6 +9,8 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @EventBusSubscriber(modid = "checkyourmods")
@@ -32,7 +35,13 @@ public class ModNetworking {
                 player.connection.disconnect(Component.literal(
                         "§c[CheckYourMods] Version mismatch!\n§7Server expects version: §e" + expectedVersion + "\n§7You have: §e" + payload.cymVersion()
                 ));
-                Main.log("VERSION MISMATCH: " + player.getName().getString() + " tried to join with " + payload.cymVersion() + ", expected " + expectedVersion);
+                Logging.log("VERSION MISMATCH: " + player.getName().getString() + " tried to join with " + payload.cymVersion() + ", expected " + expectedVersion);
+                return;
+            }
+
+            if (player.hasPermissions(4)) {
+                UUID playerUUID = player.getUUID();
+                Main.OP_PLAYER_MODS.put(playerUUID, payload.mods());
                 return;
             }
 
@@ -42,7 +51,7 @@ public class ModNetworking {
     }
 
     private static void processMods(ServerPlayer player, MinecraftServer server, Map<String, ModListPayload.ModData> clientMods) {
-        String playerUUID = player.getUUID().toString();
+        UUID playerUUID = player.getUUID();
         String playerName = player.getName().getString();
         List<? extends String> requiredIds = Config.REQUIRED_MOD_IDS.get();
         List<? extends String> optionalIds = Config.OPTIONAL_MOD_IDS.get();
@@ -68,14 +77,6 @@ public class ModNetworking {
             }
         }
 
-        if (!missingRequired.isEmpty()) {
-            player.connection.disconnect(Component.literal(
-                    "§c[CheckYourMods] You are missing required mods:\n§e" + String.join(", ", missingRequired)
-            ));
-            Main.log("MISSING REQUIRED MODS: " + playerName + " (UUID: " + playerUUID + ") | Missing: " + missingRequired);
-            return;
-        }
-
         // Check for extra/optional mods
         List<String> unallowedMods = new ArrayList<>();
         for (ModListPayload.ModData data : clientMods.values()) {
@@ -86,9 +87,97 @@ public class ModNetworking {
             }
         }
 
-        if (!unallowedMods.isEmpty()) {
-            // Ban player and log details
-            Main.log("BANNED PLAYER: " + playerName + " (UUID: " + playerUUID + ") -> " + unallowedMods);
+        if (!unallowedMods.isEmpty() || !missingRequired.isEmpty()) {
+            // Log the details
+            Logging.log(
+                    "JOIN_CHECK_FAILED | Player=" + playerName +
+                            " | UUID=" + playerUUID +
+                            " | Missing=" + missingRequired +
+                            " | Unallowed=" + unallowedMods
+            );
+
+            // Kick the player with a kickMessage
+            Component kickMessage =
+                    Component.literal("CheckYourMods\n\n")
+                            .withStyle(ChatFormatting.RED, ChatFormatting.BOLD)
+
+                            .append(Component.literal("                                                    \n\n")
+                                    .withStyle(ChatFormatting.DARK_GRAY).withStyle(ChatFormatting.STRIKETHROUGH))
+
+                            .append(Component.literal("You cannot join this server right now.\n\n")
+                                    .withStyle(ChatFormatting.WHITE));
+            if (!missingRequired.isEmpty()) {
+                kickMessage = kickMessage.copy().append(
+                        Component.literal("You are missing required mods:\n\n")
+                                .withStyle(ChatFormatting.YELLOW)
+                );
+
+                int index = 1;
+                for (String mod : missingRequired) {
+                    if(index > 5) {
+                        kickMessage = kickMessage.copy().append(
+                                Component.literal(" • and " + (missingRequired.size() - 5) + " more...\n\n")
+                                        .withStyle(ChatFormatting.GRAY)
+                        );
+                        break;
+                    }
+                    kickMessage = kickMessage.copy().append(
+                            Component.literal(" • " + mod + "\n\n")
+                                    .withStyle(ChatFormatting.RESET).withStyle(ChatFormatting.AQUA)
+                    );
+                    index++;
+                }
+
+                kickMessage = kickMessage.copy().append(Component.literal("\n"));
+            }
+
+            if (!unallowedMods.isEmpty()) {
+                kickMessage = kickMessage.copy().append(
+                        Component.literal("These mods are not allowed here:\n")
+                                .withStyle(ChatFormatting.YELLOW)
+                );
+
+                int index = 1;
+                for (String mod : unallowedMods) {
+                    if(index > 5) {
+                        kickMessage = kickMessage.copy().append(
+                                Component.literal(" • and " + (unallowedMods.size() - 5) + " more...\n\n")
+                                        .withStyle(ChatFormatting.GRAY)
+                        );
+                        break;
+                    }
+                    kickMessage = kickMessage.copy().append(
+                            Component.literal(" • " + mod + "\n")
+                                    .withStyle(ChatFormatting.RED)
+                    );
+                    index++;
+                }
+
+                kickMessage = kickMessage.copy().append(Component.literal("\n"));
+            }
+
+            kickMessage = kickMessage.copy().append(
+                    Component.literal("Please update your mod setup and try again.")
+                            .withStyle(ChatFormatting.WHITE)
+            );
+
+            player.connection.disconnect(kickMessage);
+
+            // Ban the player if configured to do so
+            if (Config.BAN_ON_UNAPPROVED_MODS.get() && !unallowedMods.isEmpty()) {
+                String timestamp = LocalDateTime.now()
+                        .format(DateTimeFormatter.ofPattern("dd. MMMM yyyy 'at' HH:mm"));
+
+                String banMessage = "§c§lUnallowed Mods :(\n" +
+                        "\n§fHey! You are using some mods that aren't allowed here yet.\n" +
+                        "§fIf you think they're fair and we should add them, just let us know!\n" +
+                        "\n§7Banned on: §e" + timestamp + "\n" +
+                        "\n§8§m                                                    §r\n" +
+                        "\n§7Just text us if you want to get your mods approved\n" +
+                        "§7or if you think this was a mistake! :)";
+
+                Main.banPlayer(playerName, playerUUID, banMessage, kickMessage);
+            }
         }
     }
 }

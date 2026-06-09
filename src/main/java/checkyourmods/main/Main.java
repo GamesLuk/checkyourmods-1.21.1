@@ -1,24 +1,28 @@
 package checkyourmods.main;
 
+import com.mojang.authlib.GameProfile;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.players.UserBanList;
+import net.minecraft.server.players.UserBanListEntry;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.server.ServerAboutToStartEvent;
+import net.neoforged.neoforge.server.ServerLifecycleHooks;
+import net.minecraft.network.chat.Component;
 
-import java.io.File;
-import java.io.FileWriter;
+import java.awt.*;
 import java.io.IOException;
-import java.io.PrintWriter;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Mod("checkyourmods")
 public class Main {
     public static Map<String, ModListPayload.ModData> SERVER_MODS_CACHE;
+    public static Map<UUID, Map<String, ModListPayload.ModData>> OP_PLAYER_MODS = new java.util.concurrent.ConcurrentHashMap<>();
 
     public Main(IEventBus modEventBus, ModContainer container) {
         container.registerConfig(ModConfig.Type.SERVER, Config.SPEC);
@@ -32,25 +36,42 @@ public class Main {
         System.out.println("[CheckYourMods] Optional mods: " + Config.OPTIONAL_MOD_IDS.get().size());
         
         // Initialize managers
-        log("SERVER START: CheckYourMods initialized with " + SERVER_MODS_CACHE.size() + " server side, " + Config.REQUIRED_MOD_IDS.get().size() + " required and " + Config.OPTIONAL_MOD_IDS.get().size() + " optional mods.");
+        Logging.log("SERVER START: CheckYourMods initialized with " + SERVER_MODS_CACHE.size() + " server side, " + Config.REQUIRED_MOD_IDS.get().size() + " required and " + Config.OPTIONAL_MOD_IDS.get().size() + " optional mods.");
     }
 
-    private static final File LOG_FILE = new File("logs", "checkyourmods-log.txt");
-    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    public static void banPlayer(String playerName, UUID playerUUID, String banReason, Component kickReason) {
+        Logging.log("BAN: " + playerName + " (" + playerUUID + ")");
 
-    public static void log(String message) {
-        File logsDir = new File("logs");
-        if (!logsDir.exists()) logsDir.mkdirs();
+        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
 
-        try (PrintWriter writer = new PrintWriter(new FileWriter(LOG_FILE, true))) {
-            String timestamp = LocalDateTime.now().format(FORMATTER);
-            writer.println("[" + timestamp + "] " + message);
-        } catch (IOException e) {
-            e.printStackTrace();
+        if (server == null) {
+            Logging.log("BAN FAILED: server instance is null");
+            return;
         }
-    }
 
-    public static void banPlayer(String playerName, String playerUUID, String reason) {
+        ServerPlayer player = server.getPlayerList().getPlayer(playerUUID);
 
+        GameProfile profile = new GameProfile(playerUUID, playerName);
+
+        UserBanList banList = server.getPlayerList().getBans();
+
+        UserBanListEntry entry = new UserBanListEntry(
+                profile,
+                null,
+                "CheckYourMods",
+                null,
+                banReason
+        );
+
+        banList.add(entry);
+        try {
+            banList.save();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        if (player != null) {
+            player.connection.disconnect(kickReason);
+        }
     }
 }

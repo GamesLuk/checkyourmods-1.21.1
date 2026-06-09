@@ -3,6 +3,9 @@ package checkyourmods.main;
 import com.electronwill.nightconfig.core.file.CommentedFileConfig;
 import net.neoforged.fml.loading.FMLPaths;
 import net.neoforged.neoforge.common.ModConfigSpec;
+
+import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 
 public class Config {
@@ -11,8 +14,7 @@ public class Config {
     public static final ModConfigSpec.ConfigValue<List<? extends String>> REQUIRED_MOD_IDS;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> OPTIONAL_MOD_IDS;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> MANUAL_XRAY_HASHES;
-    public static final ModConfigSpec.BooleanValue ENABLE_BAN_NOTIFICATIONS;
-    public static final ModConfigSpec.ConfigValue<String> BAN_NOTIFICATION_PERMISSION;
+    public static final ModConfigSpec.BooleanValue BAN_ON_UNAPPROVED_MODS;
 
     static {
         BUILDER.comment("CheckYourMods - Advanced Security Configuration")
@@ -57,20 +59,31 @@ public class Config {
 
         BUILDER.push("Ban_System");
 
-        ENABLE_BAN_NOTIFICATIONS = BUILDER
-                .comment("Enable notifications to admins when a player is banned for unallowed mods")
-                .define("enable_ban_notifications", true);
-
-        BAN_NOTIFICATION_PERMISSION = BUILDER
-                .comment("Permission level required to receive ban notifications (0=everyone, 2=ops, 3=super_ops, 4=server_owner)")
-                .define("ban_notification_permission", "4");
+        BAN_ON_UNAPPROVED_MODS = BUILDER
+                .comment("Whether to ban players who have unapproved mods or resource packs, or just kick them.")
+                .define("enable_ban_on_unapproved_mods", true);
 
         BUILDER.pop();
     }
 
+    public static void reload() {
+        Path path = FMLPaths.CONFIGDIR.get().resolve("checkyourmods-server.toml");
+
+        CommentedFileConfig config = CommentedFileConfig.builder(path).sync().build();
+
+        config.load();
+
+        REQUIRED_MOD_IDS.set(config.get("required_mod_ids"));
+        OPTIONAL_MOD_IDS.set(config.get("optional_mod_ids"));
+        MANUAL_XRAY_HASHES.set(config.get("manual_xray_hashes"));
+        BAN_ON_UNAPPROVED_MODS.set(config.get("enable_ban_on_unapproved_mods"));
+
+        config.close();
+    }
+
     public static final ModConfigSpec SPEC = BUILDER.build();
 
-    public static void addMod(String modId, String entry) {
+    private static boolean addMod(String modId, String entry) {
         CommentedFileConfig config =
                 CommentedFileConfig.of(FMLPaths.CONFIGDIR.get().resolve("checkyourmods-server.toml"));
 
@@ -85,9 +98,29 @@ public class Config {
         }
 
         config.close();
+
+        // Runtime-Werte aktualisieren
+        if (entry.equals("optional_mod_ids")) {
+            List<String> current = new ArrayList<>(OPTIONAL_MOD_IDS.get());
+            if (!current.contains(modId)) {
+                current.add(modId);
+                OPTIONAL_MOD_IDS.set(current);
+                return true;
+            }
+        }
+
+        if (entry.equals("required_mod_ids")) {
+            List<String> current = new ArrayList<>(REQUIRED_MOD_IDS.get());
+            if (!current.contains(modId)) {
+                current.add(modId);
+                REQUIRED_MOD_IDS.set(current);
+                return true;
+            }
+        }
+        return false;
     }
 
-    public static void removeMod(String modId, String entry) {
+    public static boolean removeMod(String modId, String entry) {
         CommentedFileConfig config =
                 CommentedFileConfig.of(FMLPaths.CONFIGDIR.get().resolve("checkyourmods-server.toml"));
 
@@ -102,20 +135,39 @@ public class Config {
         }
 
         config.close();
+
+        // Runtime-Werte aktualisieren
+        if (entry.equals("optional_mod_ids")) {
+            List<String> current = new ArrayList<>(OPTIONAL_MOD_IDS.get());
+            if (current.contains(modId)) {
+                current.remove(modId);
+                OPTIONAL_MOD_IDS.set(current);
+                return true;
+            }
+        }
+
+        if (entry.equals("required_mod_ids")) {
+            List<String> current = new ArrayList<>(REQUIRED_MOD_IDS.get());
+            if (current.contains(modId)) {
+                current.remove(modId);
+                REQUIRED_MOD_IDS.set(current);
+                return true;
+            }
+        }
+        return false;
     }
 
-    public static void addRequiredMod(String modId) {
-        addMod(modId, "required_mod_ids");
+    public static boolean addRequiredMod(String modId) {
         removeMod(modId, "optional_mod_ids");
+        return addMod(modId, "required_mod_ids");
     }
 
-    public static void addOptionalMod(String modId) {
-        addMod(modId, "optional_mod_ids");
+    public static boolean addOptionalMod(String modId) {
         removeMod(modId, "required_mod_ids");
+        return addMod(modId, "optional_mod_ids");
     }
 
-    public static void removeMod(String modId) {
-        removeMod(modId, "required_mod_ids");
-        removeMod(modId, "optional_mod_ids");
+    public static boolean removeMod(String modId) {
+        return removeMod(modId, "required_mod_ids") || removeMod(modId, "optional_mod_ids");
     }
 }
