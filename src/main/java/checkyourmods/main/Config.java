@@ -20,7 +20,6 @@ public class Config {
         BUILDER.comment("CheckYourMods - Advanced Security Configuration")
                 .push("Detection_Logic_Explanation");
 
-        // Detailed explanation for the administrator
         BUILDER.comment(
                 "DETECTION LOGIC EXPLANATION:",
                 "1. When a player attempts to join, the server checks their mod list against the REQUIRED_MOD_IDS and OPTIONAL_MOD_IDS.",
@@ -30,16 +29,17 @@ public class Config {
                 "5. Resource packs are scanned for suspicious keywords or matching hashes, and alerts are sent if any are detected."
         );
 
+        // FIX: "defineListAllowEmpty" durch das modernere "defineList" ersetzt
         REQUIRED_MOD_IDS = BUILDER
                 .comment("REQUIRED MODS & ALLOWED MODS OVERRIDE:",
                         "Players without these mods will be kicked and logged.",
                         "Since required mods specify what clients must have, any strictly allowed mods should be configured here or installed on the server.")
-                .defineListAllowEmpty("required_mod_ids", List.of(), o -> o instanceof String);
+                .defineList("required_mod_ids", List.of(), o -> o instanceof String);
 
         OPTIONAL_MOD_IDS = BUILDER
                 .comment("OPTIONAL MODS: Players with these mods will be allowed to join.",
                         "These mods are not required.")
-                .defineListAllowEmpty("optional_mod_ids", List.of(), o -> o instanceof String);
+                .defineList("optional_mod_ids", List.of(), o -> o instanceof String);
 
         BUILDER.pop();
 
@@ -51,9 +51,10 @@ public class Config {
                 "2. Hash Scan: Checks if the pack's SHA-256 fingerprint matches the list below."
         );
 
+        // FIX: Auch hier "defineList" genutzt
         MANUAL_XRAY_HASHES = BUILDER
                 .comment("MANUAL TRACKING: Add specific SHA-256 hashes for packs that should always trigger an alert.")
-                .defineListAllowEmpty("manual_xray_hashes", List.of("insert_hash_here"), o -> o instanceof String);
+                .defineList("manual_xray_hashes", List.of("insert_hash_here"), o -> o instanceof String);
 
         BUILDER.pop();
 
@@ -68,93 +69,114 @@ public class Config {
 
     public static void reload() {
         Path path = FMLPaths.CONFIGDIR.get().resolve("checkyourmods-server.toml");
-
         CommentedFileConfig config = CommentedFileConfig.builder(path).sync().build();
-
         config.load();
 
-        REQUIRED_MOD_IDS.set(config.get("required_mod_ids"));
-        OPTIONAL_MOD_IDS.set(config.get("optional_mod_ids"));
-        MANUAL_XRAY_HASHES.set(config.get("manual_xray_hashes"));
-        BAN_ON_UNAPPROVED_MODS.set(config.get("enable_ban_on_unapproved_mods"));
+        REQUIRED_MOD_IDS.set(config.get("Detection_Logic_Explanation.required_mod_ids"));
+        OPTIONAL_MOD_IDS.set(config.get("Detection_Logic_Explanation.optional_mod_ids"));
+        MANUAL_XRAY_HASHES.set(config.get("Resource_Pack_Detection.manual_xray_hashes"));
+        BAN_ON_UNAPPROVED_MODS.set(config.get("Ban_System.enable_ban_on_unapproved_mods"));
 
         config.close();
     }
 
     public static final ModConfigSpec SPEC = BUILDER.build();
 
-    private static boolean addMod(String modId, String entry) {
-        CommentedFileConfig config =
-                CommentedFileConfig.of(FMLPaths.CONFIGDIR.get().resolve("checkyourmods-server.toml"));
+    private static String getFullPath(String entry) {
+        if (entry.equals("required_mod_ids") || entry.equals("optional_mod_ids")) {
+            return "Detection_Logic_Explanation." + entry;
+        }
+        return entry;
+    }
 
+    private static boolean addMod(String modId, String entry) {
+        Path path = FMLPaths.CONFIGDIR.get().resolve("checkyourmods-server.toml");
+        CommentedFileConfig config = CommentedFileConfig.builder(path).sync().build();
         config.load();
 
-        List<String> mods = config.get(entry);
+        String fullPath = getFullPath(entry);
 
-        if (!mods.contains(modId)) {
-            mods.add(modId);
-            config.set(entry, mods);
-            config.save();
+        // FIX: Typsicheres Auslesen ohne jegliche Compiler-Warnungen
+        List<String> mods = new ArrayList<>();
+        Object rawMods = config.get(fullPath);
+        if (rawMods instanceof List<?> list) {
+            for (Object o : list) {
+                if (o instanceof String s) {
+                    mods.add(s);
+                }
+            }
         }
 
+        boolean changed = false;
+        if (!mods.contains(modId)) {
+            mods.add(modId);
+            config.set(fullPath, mods);
+            config.save();
+            changed = true;
+        }
         config.close();
 
-        // Runtime-Werte aktualisieren
         if (entry.equals("optional_mod_ids")) {
-            List<String> current = new ArrayList<>(OPTIONAL_MOD_IDS.get());
+            List<String> current = new ArrayList<>(OPTIONAL_MOD_IDS.get() != null ? OPTIONAL_MOD_IDS.get() : List.of());
             if (!current.contains(modId)) {
                 current.add(modId);
                 OPTIONAL_MOD_IDS.set(current);
-                return true;
+                changed = true;
             }
-        }
-
-        if (entry.equals("required_mod_ids")) {
-            List<String> current = new ArrayList<>(REQUIRED_MOD_IDS.get());
+        } else if (entry.equals("required_mod_ids")) {
+            List<String> current = new ArrayList<>(REQUIRED_MOD_IDS.get() != null ? REQUIRED_MOD_IDS.get() : List.of());
             if (!current.contains(modId)) {
                 current.add(modId);
                 REQUIRED_MOD_IDS.set(current);
-                return true;
+                changed = true;
             }
         }
-        return false;
+        return changed;
     }
 
     public static boolean removeMod(String modId, String entry) {
-        CommentedFileConfig config =
-                CommentedFileConfig.of(FMLPaths.CONFIGDIR.get().resolve("checkyourmods-server.toml"));
-
+        Path path = FMLPaths.CONFIGDIR.get().resolve("checkyourmods-server.toml");
+        CommentedFileConfig config = CommentedFileConfig.builder(path).sync().build();
         config.load();
 
-        List<String> mods = config.get(entry);
+        String fullPath = getFullPath(entry);
 
-        if (mods.contains(modId)) {
-            mods.remove(modId);
-            config.set(entry, mods);
-            config.save();
+        // FIX: Typsicheres Auslesen ohne jegliche Compiler-Warnungen
+        List<String> mods = new ArrayList<>();
+        Object rawMods = config.get(fullPath);
+        if (rawMods instanceof List<?> list) {
+            for (Object o : list) {
+                if (o instanceof String s) {
+                    mods.add(s);
+                }
+            }
         }
 
+        boolean changed = false;
+        if (mods.contains(modId)) {
+            mods.remove(modId);
+            config.set(fullPath, mods);
+            config.save();
+            changed = true;
+        }
         config.close();
 
-        // Runtime-Werte aktualisieren
         if (entry.equals("optional_mod_ids")) {
-            List<String> current = new ArrayList<>(OPTIONAL_MOD_IDS.get());
+            List<String> current = new ArrayList<>(OPTIONAL_MOD_IDS.get() != null ? OPTIONAL_MOD_IDS.get() : List.of());
             if (current.contains(modId)) {
                 current.remove(modId);
                 OPTIONAL_MOD_IDS.set(current);
-                return true;
+                changed = true;
             }
-        }
-
-        if (entry.equals("required_mod_ids")) {
-            List<String> current = new ArrayList<>(REQUIRED_MOD_IDS.get());
+        } else if (entry.equals("required_mod_ids")) {
+            List<String> current = new ArrayList<>(REQUIRED_MOD_IDS.get() != null ? REQUIRED_MOD_IDS.get() : List.of());
             if (current.contains(modId)) {
                 current.remove(modId);
                 REQUIRED_MOD_IDS.set(current);
-                return true;
+                changed = true;
             }
         }
-        return false;
+        return changed;
     }
 
     public static boolean addRequiredMod(String modId) {
@@ -168,6 +190,8 @@ public class Config {
     }
 
     public static boolean removeMod(String modId) {
-        return removeMod(modId, "required_mod_ids") || removeMod(modId, "optional_mod_ids");
+        boolean removedRequired = removeMod(modId, "required_mod_ids");
+        boolean removedOptional = removeMod(modId, "optional_mod_ids");
+        return removedRequired || removedOptional;
     }
 }

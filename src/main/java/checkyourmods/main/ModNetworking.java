@@ -39,9 +39,17 @@ public class ModNetworking {
                 return;
             }
 
-            if (player.hasPermissions(4)) {
+            // FIX: Nutzt jetzt die Server-PlayerList statt der Entity-Permissions, da diese sofort bereit ist!
+            if (server.getPlayerList().isOp(player.getGameProfile())) {
                 UUID playerUUID = player.getUUID();
+
+                // Sicherheitsnetz: Falls die Map in Main null ist, initialisieren
+                if (Main.OP_PLAYER_MODS == null) {
+                    Main.OP_PLAYER_MODS = new java.util.concurrent.ConcurrentHashMap<>();
+                }
+
                 Main.OP_PLAYER_MODS.put(playerUUID, payload.mods());
+                Logging.log("[OP CACHE] Saved " + payload.mods().size() + " mods for OP-Player: " + player.getName().getString());
                 return;
             }
 
@@ -82,13 +90,11 @@ public class ModNetworking {
         for (ModListPayload.ModData data : clientMods.values()) {
             String cleanId = data.modId().split("#")[0].trim();
             if (!serverIds.contains(cleanId) && !optionalIds.contains(cleanId)) {
-                // This mod is not on the server and not marked as optional
                 unallowedMods.add(cleanId);
             }
         }
 
         if (!unallowedMods.isEmpty() || !missingRequired.isEmpty()) {
-            // Log the details
             Logging.log(
                     "JOIN_CHECK_FAILED | Player=" + playerName +
                             " | UUID=" + playerUUID +
@@ -96,77 +102,64 @@ public class ModNetworking {
                             " | Unallowed=" + unallowedMods
             );
 
-            // Kick the player with a kickMessage
             Component kickMessage =
                     Component.literal("CheckYourMods\n\n")
                             .withStyle(ChatFormatting.RED, ChatFormatting.BOLD)
-
                             .append(Component.literal("                                                    \n\n")
                                     .withStyle(ChatFormatting.DARK_GRAY).withStyle(ChatFormatting.STRIKETHROUGH))
-
                             .append(Component.literal("You cannot join this server right now.\n\n")
                                     .withStyle(ChatFormatting.WHITE));
+
             if (!missingRequired.isEmpty()) {
                 kickMessage = kickMessage.copy().append(
-                        Component.literal("You are missing required mods:\n\n")
-                                .withStyle(ChatFormatting.YELLOW)
+                        Component.literal("You are missing required mods:\n\n").withStyle(ChatFormatting.YELLOW)
                 );
 
                 int index = 1;
                 for (String mod : missingRequired) {
                     if(index > 5) {
                         kickMessage = kickMessage.copy().append(
-                                Component.literal(" • and " + (missingRequired.size() - 5) + " more...\n\n")
-                                        .withStyle(ChatFormatting.GRAY)
+                                Component.literal(" • and " + (missingRequired.size() - 5) + " more...\n\n").withStyle(ChatFormatting.GRAY)
                         );
                         break;
                     }
                     kickMessage = kickMessage.copy().append(
-                            Component.literal(" • " + mod + "\n\n")
-                                    .withStyle(ChatFormatting.RESET).withStyle(ChatFormatting.AQUA)
+                            Component.literal(" • " + mod + "\n\n").withStyle(ChatFormatting.RESET).withStyle(ChatFormatting.AQUA)
                     );
                     index++;
                 }
-
                 kickMessage = kickMessage.copy().append(Component.literal("\n"));
             }
 
             if (!unallowedMods.isEmpty()) {
                 kickMessage = kickMessage.copy().append(
-                        Component.literal("These mods are not allowed here:\n")
-                                .withStyle(ChatFormatting.YELLOW)
+                        Component.literal("These mods are not allowed here:\n").withStyle(ChatFormatting.YELLOW)
                 );
 
                 int index = 1;
                 for (String mod : unallowedMods) {
                     if(index > 5) {
                         kickMessage = kickMessage.copy().append(
-                                Component.literal(" • and " + (unallowedMods.size() - 5) + " more...\n\n")
-                                        .withStyle(ChatFormatting.GRAY)
+                                Component.literal(" • and " + (unallowedMods.size() - 5) + " more...\n\n").withStyle(ChatFormatting.GRAY)
                         );
                         break;
                     }
                     kickMessage = kickMessage.copy().append(
-                            Component.literal(" • " + mod + "\n")
-                                    .withStyle(ChatFormatting.RED)
+                            Component.literal(" • " + mod + "\n").withStyle(ChatFormatting.RED)
                     );
                     index++;
                 }
-
                 kickMessage = kickMessage.copy().append(Component.literal("\n"));
             }
 
             kickMessage = kickMessage.copy().append(
-                    Component.literal("Please update your mod setup and try again.")
-                            .withStyle(ChatFormatting.WHITE)
+                    Component.literal("Please update your mod setup and try again.").withStyle(ChatFormatting.WHITE)
             );
 
             player.connection.disconnect(kickMessage);
 
-            // Ban the player if configured to do so
             if (Config.BAN_ON_UNAPPROVED_MODS.get() && !unallowedMods.isEmpty()) {
-                String timestamp = LocalDateTime.now()
-                        .format(DateTimeFormatter.ofPattern("dd. MMMM yyyy 'at' HH:mm"));
+                String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd. MMMM yyyy 'at' HH:mm"));
 
                 String banMessage = "§c§lUnallowed Mods :(\n" +
                         "\n§fHey! You are using some mods that aren't allowed here yet.\n" +
