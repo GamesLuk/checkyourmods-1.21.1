@@ -11,9 +11,13 @@ import java.util.List;
 public class Config {
     private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
 
+    public static final ModConfigSpec.BooleanValue ENABLE_MOD_CHECKS;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> REQUIRED_MOD_IDS;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> OPTIONAL_MOD_IDS;
+
+    public static final ModConfigSpec.BooleanValue ENABLE_RESOURCE_PACK_CHECKS;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> MANUAL_XRAY_HASHES;
+
     public static final ModConfigSpec.BooleanValue BAN_ON_UNAPPROVED_MODS;
 
     static {
@@ -28,6 +32,10 @@ public class Config {
                 "4. If the player has mods that are not in either list, they are banned and logged as well.",
                 "5. Resource packs are scanned for suspicious keywords or matching hashes, and alerts are sent if any are detected."
         );
+
+        ENABLE_MOD_CHECKS = BUILDER
+                .comment("Whether to enable mod checking logic entirely.")
+                .define("enable_mod_checks", true);
 
         // FIX: "defineListAllowEmpty" durch das modernere "defineList" ersetzt
         REQUIRED_MOD_IDS = BUILDER
@@ -51,6 +59,10 @@ public class Config {
                 "2. Hash Scan: Checks if the pack's SHA-256 fingerprint matches the list below."
         );
 
+        ENABLE_RESOURCE_PACK_CHECKS = BUILDER
+                .comment("Whether to enable resource pack checking logic entirely.")
+                .define("enable_resource_pack_checks", true);
+
         // FIX: Auch hier "defineList" genutzt
         MANUAL_XRAY_HASHES = BUILDER
                 .comment("MANUAL TRACKING: Add specific SHA-256 hashes for packs that should always trigger an alert.")
@@ -72,9 +84,13 @@ public class Config {
         CommentedFileConfig config = CommentedFileConfig.builder(path).sync().build();
         config.load();
 
+        ENABLE_MOD_CHECKS.set(config.get("Detection_Logic_Explanation.enable_mod_checks"));
         REQUIRED_MOD_IDS.set(config.get("Detection_Logic_Explanation.required_mod_ids"));
         OPTIONAL_MOD_IDS.set(config.get("Detection_Logic_Explanation.optional_mod_ids"));
+
+        ENABLE_RESOURCE_PACK_CHECKS.set(config.get("Resource_Pack_Detection.enable_resource_pack_checks"));
         MANUAL_XRAY_HASHES.set(config.get("Resource_Pack_Detection.manual_xray_hashes"));
+
         BAN_ON_UNAPPROVED_MODS.set(config.get("Ban_System.enable_ban_on_unapproved_mods"));
 
         config.close();

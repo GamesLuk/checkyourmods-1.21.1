@@ -53,8 +53,12 @@ public class ModNetworking {
                 return;
             }
 
-            processMods(player, server, payload.mods());
-            PackNetworking.handlePackVerification(player, payload.packs());
+            if (Config.ENABLE_MOD_CHECKS.get()) {
+                processMods(player, server, payload.mods());
+            }
+            if (Config.ENABLE_RESOURCE_PACK_CHECKS.get()) {
+                PackNetworking.handlePackVerification(player, payload.packs());
+            }
         });
     }
 
@@ -89,7 +93,8 @@ public class ModNetworking {
         List<String> unallowedMods = new ArrayList<>();
         for (ModListPayload.ModData data : clientMods.values()) {
             String cleanId = data.modId().split("#")[0].trim();
-            if (!serverIds.contains(cleanId) && !optionalIds.contains(cleanId)) {
+
+            if (!serverIds.contains(cleanId) && !optionalIds.contains(cleanId) && !requiredIds.contains(cleanId)) {
                 unallowedMods.add(cleanId);
             }
         }
